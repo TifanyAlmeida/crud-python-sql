@@ -16,8 +16,7 @@ CREATE TABLE Produto(
     qtd_estoque int not null,
     preco decimal(5, 2) not null
 );
-call sp_aumentar_preco_produto(3, 80);
-call sp_diminuir_preco_produto(3, 80);
+call sp_aumentar_preco_produto(1, 80);
 INSERT INTO Produto VALUES(id_produto, 'Lays', 153, 7.69);
 INSERT INTO Produto VALUES(id_produto, 'Coca-Cola', 40, 5.50);
 INSERT INTO Produto VALUES(id_produto, 'Pão de Queijo', 12, 2.00);
@@ -46,19 +45,7 @@ CREATE TABLE PedidoItem(
     FOREIGN KEY(fk_pedido) REFERENCES Pedido(id_pedido)
 );
 
-CREATE TABLE lista_compras (
-	id_lista_compras int auto_increment primary key,
-	data_registro datetime,
-    fk_produto int,
-    FOREIGN KEY(fk_produto) REFERENCES Produto(id_produto),
-    quantidade int,
-    comprado boolean
-);
-
+drop table pedidoitem;
 drop table pedido;
-drop table pedidoItem;
-drop table produto;
-Select * from Pedido;
 SELECT * FROM Produto;
 SELECT * FROM PedidoItem;
-SELECT * FROM lista_compras;
