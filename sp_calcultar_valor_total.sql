@@ -1,4 +1,4 @@
-CREATE PROCEDURE `sp_calcultar_valor_total` (pedido int)
+CREATE DEFINER=`root`@`localhost` PROCEDURE `sp_calcultar_valor_total`(pedido int)
 BEGIN
 	UPDATE Pedido SET valor_total = (SELECT preco FROM Produto WHERE id_produto
     = 

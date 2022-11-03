@@ -27,7 +27,8 @@ def chamar_menu_ecommerce():
     print("\n######### Ecommerce ##########")
     print("1 - Produtos")
     print("2 - Pedidos")
-    print("3 - Voltar")
+    print("3 - Lista de Compras")
+    print("4 - Voltar")
 
     ops = int(input("\n- Opção: "))
 
@@ -36,11 +37,19 @@ def chamar_menu_ecommerce():
     elif ops == 2:
         chamar_menu_pedido()
     elif ops == 3:
+        mostrar_lista_compras()
+    elif ops == 4:
         mostrar_menu()
     else:
         print("\n*Esse item não foi encontrado em nosso Menu !\n")
     
     chamar_menu_ecommerce()
+
+def mostrar_lista_compras():
+    cursor.execute('SELECT * FROM lista_compras')
+    for (id_lista_compras, data_registro, fk_produto, quantidade, comprado) in cursor:
+        print(f'\n{id_lista_compras}({data_registro}) - Produto: {fk_produto} (qtd: {quantidade}) ')
+        print('Comprar') if comprado == False else print("Comprado")
 
 
 def exibirPedido():
@@ -77,6 +86,7 @@ def chamar_menu_pedido():
         exibirPedido()
 
     elif opcao == 2:
+        # criar log de criação
         cliente = input("\nNome do Cliente: ")
         query = 'INSERT INTO Pedido VALUES(null, %s, 0, now())'
         dados = (cliente, )
@@ -108,10 +118,15 @@ def chamar_menu_pedido():
 
         else:
             print("\n* Produto fora de estoque, será adicionado na lista de compras * \n")
-            # criar a inserção com procedure na tabela de lista de compras
-
+            quantidade = int(input("Quantos deseja comprar(ex: 100): "))
+            query = 'call sp_add_lista_compras(%s, %s)'
+            dados = (fk_produto, quantidade)
+            cursor.execute(query, dados)
+            conexao.commit()
+            mostrar_lista_compras()
 
     elif opcao == 4:
+        # criar log de exclusão
         exibirPedidoItem()
         id_pedido = int(input("\n N° de Item do Pedido: "))
         query = 'DELETE FROM PedidoItem WHERE id_pedido_item = %s'
@@ -163,11 +178,10 @@ def verificar(op):
     else:
        chamar_menu_produto()
 
-####
 def exibir_produto():
     cursor.execute('SELECT * FROM Produto')
     for (id_produto,nome,qtd_estoque, preco) in cursor:
-        print(f'\n{id_produto} - {nome} R$ {preco} (estoque): {qtd_estoque}\n')
+        print(f'\n{id_produto} - {nome}(estoque: {qtd_estoque}) R$ {preco} \n')
 
 def cadastrar_produto():
     produto = input("\nProduto: ")
@@ -175,7 +189,7 @@ def cadastrar_produto():
     qtd_estoque = int(input("Estoque: "))
 
     query = 'INSERT INTO Produto VALUES(null, %s, %s, %s)'
-    dados = (produto, preco, qtd_estoque)
+    dados = (produto,qtd_estoque, preco)
     cursor.execute(query, dados)
     conexao.commit()
 
@@ -235,6 +249,7 @@ def chamar_menu_produto():
         exibir_produto()
 
     elif op == 2:
+        # criar log de cadastro
        cadastrar_produto()
        exibir_produto()
         
@@ -244,6 +259,7 @@ def chamar_menu_produto():
         exibir_produto()
 
     elif op == 4:
+        # criar log de exclusao
         exibir_produto()
         deletar_produto()
         exibir_produto()
@@ -273,7 +289,6 @@ def chamar_menu_produto():
         exibir_produto()
 
     elif op == 7:
-        print("\n# Até Logo! #\n")
         chamar_menu_ecommerce()
 
     else:

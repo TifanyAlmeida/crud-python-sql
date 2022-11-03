@@ -1,4 +1,0 @@
-- login não feito, falta arrumar a criptografia
-- se dile logar, acessar outro menu
-
-
