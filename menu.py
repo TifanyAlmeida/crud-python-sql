@@ -1,12 +1,12 @@
 import mysql.connector
 import bcrypt
-# login não está funcionando
-# produto ok: falta os triggers e a cricao da tabela de compras com estoque zerado
 
 conexao = mysql.connector.connect(user='root', password = '1234', host='127.0.0.1', database='ecommerce')
 cursor = conexao.cursor()
-
+nome = ""
+# MENU DE CADASTRO DE USUÁRIO E VERIFICAÇÃO DE LOGIN
 def mostrar_menu():
+    matched = False
 
     print("\n\n########### MENU ##########")
     print("1 - Cadastro")
@@ -15,14 +15,57 @@ def mostrar_menu():
     op = int(input("- Opção: "))
 
     if op == 1 or op == 2:
-        verificar(op)
-    if op == 3:
-        exit()
-    else:
-        print("\n*Esse item não foi encontrado em nosso Menu!\n")
-        mostrar_menu()
-#
+        email = input("\n- Email: ")
+        senha = input("- Senha: ")
 
+        if op == 1:
+            # encripitando
+            hash_senha = bcrypt.hashpw(senha.encode('utf8'), bcrypt.gensalt(10))
+            nome = input("- Nome: ")
+            query = 'INSERT INTO Usuario VALUES(null, %s, %s, %s)'
+            dados = (nome, email, hash_senha)
+            cursor.execute(query, dados)
+            conexao.commit()
+            mostrar_menu()
+
+        elif op == 2:
+            #email
+            query = 'SELECT COUNT(*) FROM Usuario WHERE email = %s'
+            dados = (email, )
+            cursor.execute(query, dados)
+            max_row = cursor.fetchall()
+            
+            #senha
+            query = 'SELECT senha FROM Usuario WHERE email = %s'
+            dados = (email, )
+            cursor.execute(query, dados)
+            senha_hash_bd = cursor.fetchall()
+
+            # verificando se as senhas dão matched
+            if max_row[0][0] > 0:
+                matched = bcrypt.checkpw(senha.encode('utf-8'), senha_hash_bd[0][0].encode('utf-8'))
+            
+                if matched == True:
+                    chamar_menu_ecommerce()
+                else: 
+                    print("\n* Email ou Senha Incorretos! ")
+                    mostrar_menu()
+            else:
+                print("\n* Email ou Senha Incorretos! ")
+                mostrar_menu()
+
+    elif op == 3:
+        print("\n######### Até Logo #########\n")
+        exit()
+
+    else:
+        print("\n* Esse item não foi encontrado em nosso Menu!\n")
+        mostrar_menu()
+
+    return nome
+
+
+# MENU DO ECOMMERCE
 def chamar_menu_ecommerce():
     print("\n######### Ecommerce ##########")
     print("1 - Produtos")
@@ -45,25 +88,27 @@ def chamar_menu_ecommerce():
     
     chamar_menu_ecommerce()
 
+# SELECT NA LISTA DE COMPRA
 def mostrar_lista_compras():
     cursor.execute('SELECT * FROM lista_compras')
     for (id_lista_compras, data_registro, fk_produto, quantidade, comprado) in cursor:
         print(f'\n{id_lista_compras}({data_registro}) - Produto: {fk_produto} (qtd: {quantidade}) ')
         print('Comprar') if comprado == False else print("Comprado")
 
-
+# SELECT NOS PEDIDOS
 def exibirPedido():
     cursor.execute('SELECT * FROM Pedido')
     for (id_pedido, nome_cliente, valor_total, hora_pedido) in cursor:
         print(f'\n{id_pedido} - {nome_cliente} - Total R$ {valor_total} - ({hora_pedido})\n')
 
+# SELECT NOS PEDIDO ITENS
 def exibirPedidoItem():
     cursor.execute('SELECT * FROM PedidoItem')
     for (id_pedido_item, qtd, preco_unitario, fk_produto, fk_pedido) in cursor:
         print(f'\n{id_pedido_item} - {qtd} Unidade R$ {preco_unitario} (fk_produto {fk_produto}, fk_pedido {fk_pedido})\n')
 
+# VERIFICANDO ESTOQUE DE Produto
 def  verificar_estoque(valor):
-
     query = 'SELECT qtd_estoque FROM Produto WHERE id_produto = %s'
     dados = (valor, )
     cursor.execute(query, dados)
@@ -72,6 +117,7 @@ def  verificar_estoque(valor):
     else:
         return True
 
+# MENU DOS PEDIDOS
 def chamar_menu_pedido():
     print("\n ######### Pedidos ########\n")
     print("1 - Exibir os pedidos existentes")
@@ -86,13 +132,15 @@ def chamar_menu_pedido():
         exibirPedido()
 
     elif opcao == 2:
-        # criar log de criação
-        cliente = input("\nNome do Cliente: ")
+        cliente = mostrar_menu()
         query = 'INSERT INTO Pedido VALUES(null, %s, 0, now())'
         dados = (cliente, )
         cursor.execute(query, dados)
         conexao.commit()
+        
+        query = 'call '
         exibirPedido()
+
 
     elif opcao == 3:
         exibir_produto()
@@ -126,7 +174,6 @@ def chamar_menu_pedido():
             mostrar_lista_compras()
 
     elif opcao == 4:
-        # criar log de exclusão
         exibirPedidoItem()
         id_pedido = int(input("\n N° de Item do Pedido: "))
         query = 'DELETE FROM PedidoItem WHERE id_pedido_item = %s'
@@ -148,41 +195,20 @@ def chamar_menu_pedido():
     
     chamar_menu_pedido()
 
+# PROCEDURE CALC TOTAL PEDIDO
 def calcular_total_pedido(pedido):
-
     query = 'call sp_calcultar_valor_total(%s)'
     dados = (pedido, )
     cursor.execute(query, dados)
     conexao.commit()
 
-def verificar(op):
-
-    nome = input("\nNome: ")
-    email = input("Email: ")
-    senha = input("Senha: ")
-    # hashed_password = bcrypt.hashpw(senha.encode('utf8'), bcrypt.gensalt())
-    
-    if op == 1:
-
-        # if max_row == 0:
-        query = 'INSERT INTO Usuario VALUES(null, %s, %s, %s)'
-        dados = (nome, email, senha)
-        cursor.execute(query, dados)
-        conexao.commit()
-        mostrar_menu()
-
-    if op == 2:
-        # validação
-        chamar_menu_ecommerce()
-
-    else:
-       chamar_menu_produto()
-
+# SELECT NOS PRODUTOS
 def exibir_produto():
     cursor.execute('SELECT * FROM Produto')
     for (id_produto,nome,qtd_estoque, preco) in cursor:
         print(f'\n{id_produto} - {nome}(estoque: {qtd_estoque}) R$ {preco} \n')
 
+# CADASTRAR PRODUTOS
 def cadastrar_produto():
     produto = input("\nProduto: ")
     preco = float(input("R$ "))
@@ -193,6 +219,7 @@ def cadastrar_produto():
     cursor.execute(query, dados)
     conexao.commit()
 
+# ALTERAR PRODUTOS
 def alterar_produto():
 
     id = int(input("\n+ N° Produto: "))
@@ -224,6 +251,7 @@ def alterar_produto():
     cursor.execute(query, dados)
     conexao.commit()
 
+# DELETAR PRODUTO
 def deletar_produto():
     id = int(input("\n+ N° Produto: "))
     query = 'DELETE FROM Produto WHERE id_produto = %s'
@@ -231,6 +259,7 @@ def deletar_produto():
     cursor.execute(query, dados)
     conexao.commit()
 
+# MENU DOS PRODUTOS
 def chamar_menu_produto():
     
     print("\n\n----------- Produtos -----------")
@@ -249,7 +278,6 @@ def chamar_menu_produto():
         exibir_produto()
 
     elif op == 2:
-        # criar log de cadastro
        cadastrar_produto()
        exibir_produto()
         
@@ -259,7 +287,6 @@ def chamar_menu_produto():
         exibir_produto()
 
     elif op == 4:
-        # criar log de exclusao
         exibir_produto()
         deletar_produto()
         exibir_produto()
@@ -297,9 +324,3 @@ def chamar_menu_produto():
     chamar_menu_produto()
 
 mostrar_menu()
-
-    # # verificar desincriptado
-    # query_cad = 'SELECT COUNT(*) FROM Usuario WHERE email = %s or senha = %s'
-    # dados = (email, hashed, email)
-    # cursor.execute(query_cad,dados)
-    # max_row = cursor.fetchall()
